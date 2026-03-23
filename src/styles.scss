@@ -1,0 +1,22 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+}
+
+// Cesium fullscreen fix: hide default Cesium credits bar overlap
+.cesium-viewer-bottom {
+  bottom: 0;
+}
+
+// Snackbar error style
+.snack-error .mdc-snackbar__surface {
+  background-color: #c62828 !important;
+}
