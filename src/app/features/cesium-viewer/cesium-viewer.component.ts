@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as Cesium from 'cesium';
 import { TerrainService } from '../../core/services/terrain.service';
 import { CesiumLayerService } from '../../core/services/cesium-layer.service';
+import { CesiumWfsService } from '../../core/services/cesium-wfs.service';
 import { TerrainDialogComponent } from '../terrain-dialog/terrain-dialog.component';
 import { TerrainProviderConfig } from '../../core/models/terrain.model';
 import { LayerManagerComponent } from '../layer-manager/layer-manager.component';
@@ -133,6 +134,7 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
 
   terrainService = inject(TerrainService);
   private cesiumLayerService = inject(CesiumLayerService);
+  private cesiumWfsService = inject(CesiumWfsService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -175,6 +177,7 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
 
     this.terrainService.setViewer(this.viewer);
     this.cesiumLayerService.setViewer(this.viewer);
+    this.cesiumWfsService.setViewer(this.viewer);
 
     // Enable depth testing so terrain occludes objects correctly
     this.viewer.scene.globe.depthTestAgainstTerrain = true;
