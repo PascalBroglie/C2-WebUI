@@ -2,7 +2,7 @@ import { Signal } from '@angular/core';
 
 // ─── Service type discriminant ────────────────────────────────────────────────
 
-export type OgcServiceType = 'WMS' | 'WFS';
+export type OgcServiceType = 'WMS' | 'WFS' | 'WMTS';
 
 // ─── Shared server/layer value objects ───────────────────────────────────────
 

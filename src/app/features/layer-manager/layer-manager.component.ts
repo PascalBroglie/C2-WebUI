@@ -11,12 +11,16 @@ import { OGC_SERVICES_TOKEN } from '../../core/builders/ogc-service-registry.bui
 import { OgcServerConfig } from '../../core/models/ogc.model';
 import { WmsService } from '../../core/services/wms.service';
 import { WfsService } from '../../core/services/wfs.service';
+import { WmtsService } from '../../core/services/wmts.service';
 import { WmsServerConfig } from '../../core/models/wms.model';
 import { WfsServerConfig } from '../../core/models/wfs.model';
+import { WmtsServerConfig } from '../../core/models/wmts.model';
 import { WmsServerItemComponent } from './wms-server-item/wms-server-item.component';
 import { WfsServerItemComponent } from './wfs-server-item/wfs-server-item.component';
+import { WmtsServerItemComponent } from './wmts-server-item/wmts-server-item.component';
 import { AddServerDialogComponent } from './add-server-dialog/add-server-dialog.component';
 import { AddWfsServerDialogComponent } from './add-wfs-server-dialog/add-wfs-server-dialog.component';
+import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-server-dialog.component';
 
 @Component({
   selector: 'app-layer-manager',
@@ -30,10 +34,11 @@ import { AddWfsServerDialogComponent } from './add-wfs-server-dialog/add-wfs-ser
     MatTooltipModule,
     WmsServerItemComponent,
     WfsServerItemComponent,
+    WmtsServerItemComponent,
   ],
   template: `
     <button mat-fab extended [color]="panelOpen() ? 'accent' : 'primary'" class="toggle-fab"
-      (click)="panelOpen.set(!panelOpen())" matTooltip="Gestionnaire de couches (WMS / WFS)">
+      (click)="panelOpen.set(!panelOpen())" matTooltip="Gestionnaire de couches (WMS / WFS / WMTS)">
       <mat-icon>layers</mat-icon>
       Couches
       @if (totalActiveLayers() > 0) {
@@ -118,13 +123,45 @@ import { AddWfsServerDialogComponent } from './add-wfs-server-dialog/add-wfs-ser
             </div>
           </mat-tab>
 
+          <!-- ── WMTS ─────────────────────────────────────────────────────────── -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="tab-icon">grid_view</mat-icon> WMTS
+              @if (wmtsService.activeLayers().length > 0) {
+                <span class="tab-badge">{{ wmtsService.activeLayers().length }}</span>
+              }
+            </ng-template>
+            <div class="tab-content">
+              <div class="tab-toolbar">
+                <span class="tab-hint">Services de tuiles (OGC WMTS)</span>
+                <button mat-icon-button (click)="openAddDialog('WMTS')" matTooltip="Ajouter un serveur WMTS">
+                  <mat-icon>add_circle_outline</mat-icon>
+                </button>
+              </div>
+              <div class="server-list">
+                @if (wmtsService.servers().length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>grid_off</mat-icon>
+                    <p>Aucun serveur WMTS</p>
+                    <button mat-stroked-button color="primary" (click)="openAddDialog('WMTS')">
+                      <mat-icon>add</mat-icon> Ajouter
+                    </button>
+                  </div>
+                }
+                @for (server of wmtsService.servers(); track server.id) {
+                  <app-wmts-server-item [server]="server" />
+                }
+              </div>
+            </div>
+          </mat-tab>
+
         </mat-tab-group>
 
         @if (totalActiveLayers() > 0) {
           <mat-divider />
           <div class="panel-footer">
             <mat-icon>check_circle</mat-icon>
-            <span>{{ wmsService.activeLayers().length }} WMS • {{ wfsService.activeLayers().length }} WFS actif(s)</span>
+            <span>{{ wmsService.activeLayers().length }} WMS • {{ wfsService.activeLayers().length }} WFS • {{ wmtsService.activeLayers().length }} WMTS actif(s)</span>
           </div>
         }
       </div>
@@ -150,6 +187,7 @@ export class LayerManagerComponent {
   // Type-specific services for tab-level binding
   wmsService = inject(WmsService);
   wfsService = inject(WfsService);
+  wmtsService = inject(WmtsService);
 
   // OGC_SERVICES_TOKEN gives a uniform view over all services for cross-cutting concerns
   private allServices = inject(OGC_SERVICES_TOKEN);
@@ -163,15 +201,22 @@ export class LayerManagerComponent {
     return this.allServices.reduce((n, s) => n + s.activeLayers().length, 0);
   }
 
-  openAddDialog(type: 'WMS' | 'WFS'): void {
-    const ref = type === 'WMS'
-      ? this.dialog.open(AddServerDialogComponent, { width: '560px' })
-      : this.dialog.open(AddWfsServerDialogComponent, { width: '560px' });
+  openAddDialog(type: 'WMS' | 'WFS' | 'WMTS'): void {
+    let ref;
+    if (type === 'WMS') {
+      ref = this.dialog.open(AddServerDialogComponent, { width: '560px' });
+    } else if (type === 'WFS') {
+      ref = this.dialog.open(AddWfsServerDialogComponent, { width: '560px' });
+    } else {
+      ref = this.dialog.open(AddWmtsServerDialogComponent, { width: '560px' });
+    }
 
     ref.afterClosed().subscribe(async (config: OgcServerConfig | null) => {
       if (!config) return;
       this.panelOpen.set(true);
-      const service = type === 'WMS' ? this.wmsService : this.wfsService;
+      const service = type === 'WMS' ? this.wmsService
+        : type === 'WFS' ? this.wfsService
+        : this.wmtsService;
       try {
         await service.addServer(config);
         this.snackBar.open(`Serveur ${type} chargé`, 'OK', { duration: 3000 });

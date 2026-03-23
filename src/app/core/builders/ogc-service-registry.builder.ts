@@ -7,8 +7,10 @@ import {
 import { CesiumDataAdapter, OgcService } from '../models/ogc.model';
 import { WmsService } from '../services/wms.service';
 import { WfsService } from '../services/wfs.service';
+import { WmtsService } from '../services/wmts.service';
 import { CesiumLayerService } from '../services/cesium-layer.service';
 import { CesiumWfsService } from '../services/cesium-wfs.service';
+import { CesiumWmtsService } from '../services/cesium-wmts.service';
 
 // ─── Injection tokens ─────────────────────────────────────────────────────────
 
@@ -83,6 +85,24 @@ export class OgcServiceRegistryBuilder {
     this.adapterProviders.push({
       provide: CESIUM_ADAPTERS_TOKEN,
       useExisting: CesiumWfsService,
+      multi: true,
+    });
+    return this;
+  }
+
+  /**
+   * Registers the WMTS service (WmtsService) and its Cesium adapter
+   * (CesiumWmtsService — WebMapTileServiceImageryProvider).
+   */
+  registerWmts(): this {
+    this.serviceProviders.push({
+      provide: OGC_SERVICES_TOKEN,
+      useExisting: WmtsService,
+      multi: true,
+    });
+    this.adapterProviders.push({
+      provide: CESIUM_ADAPTERS_TOKEN,
+      useExisting: CesiumWmtsService,
       multi: true,
     });
     return this;

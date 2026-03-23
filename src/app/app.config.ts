@@ -11,6 +11,7 @@ export const appConfig: ApplicationConfig = {
     new OgcServiceRegistryBuilder()
       .registerWms()
       .registerWfs()
+      .registerWmts()
       .build(),
   ],
 };
