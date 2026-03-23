@@ -12,6 +12,7 @@ import {
   WFS_COLOR_PALETTE,
 } from '../models/wfs.model';
 import { CesiumWfsService } from './cesium-wfs.service';
+import { PersistenceService } from './persistence.service';
 
 const JSON_FORMATS = [
   'application/json',
@@ -25,6 +26,7 @@ const JSON_FORMATS = [
 export class WfsService implements OgcService {
   private http = inject(HttpClient);
   private cesiumWfsService = inject(CesiumWfsService);
+  private persistence = inject(PersistenceService);
 
   // ─── OgcService identity ──────────────────────────────────────────────────
 
@@ -36,6 +38,13 @@ export class WfsService implements OgcService {
 
   readonly servers = signal<WfsServer[]>([]);
   readonly activeLayers = signal<ActiveWfsLayer[]>([]);
+
+  private readonly configMap = new Map<string, WfsServerConfig>();
+
+  constructor() {
+    const saved = this.persistence.load<WfsServerConfig>('wfs.servers');
+    saved.forEach(config => this.addServer(config).catch(() => {}));
+  }
 
   // ─── OgcService contract ──────────────────────────────────────────────────
 
@@ -68,6 +77,8 @@ export class WfsService implements OgcService {
         const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
         const parsed = this.parseCapabilities(xmlText, id, config);
         this.updateServer(id, { ...parsed, status: 'ready' });
+        this.configMap.set(id, config);
+        this.persistConfigs();
         return;
       } catch {
         // try next version
@@ -88,6 +99,8 @@ export class WfsService implements OgcService {
 
     this.activeLayers.update(list => list.filter(l => l.serverId !== serverId));
     this.servers.update(list => list.filter(s => s.id !== serverId));
+    this.configMap.delete(serverId);
+    this.persistConfigs();
   }
 
   // ─── Feature type activation ──────────────────────────────────────────────
@@ -296,6 +309,10 @@ export class WfsService implements OgcService {
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  private persistConfigs(): void {
+    this.persistence.save('wfs.servers', Array.from(this.configMap.values()));
+  }
 
   private resolveJsonFormat(server: WfsServer, ft: WfsFeatureType): string | null {
     const candidates = ft.outputFormats.length > 0 ? ft.outputFormats : server.jsonOutputFormats;

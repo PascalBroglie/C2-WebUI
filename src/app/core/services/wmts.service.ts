@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { PersistenceService } from './persistence.service';
 import { OgcServerConfig, OgcService, OgcServiceType } from '../models/ogc.model';
 import {
   ActiveWmtsLayer,
@@ -19,6 +20,7 @@ import { CesiumWmtsService } from './cesium-wmts.service';
 export class WmtsService implements OgcService {
   private http = inject(HttpClient);
   private cesiumWmtsService = inject(CesiumWmtsService);
+  private persistence = inject(PersistenceService);
 
   // ─── OgcService identity ──────────────────────────────────────────────────
 
@@ -30,6 +32,13 @@ export class WmtsService implements OgcService {
 
   readonly servers = signal<WmtsServer[]>([]);
   readonly activeLayers = signal<ActiveWmtsLayer[]>([]);
+
+  private readonly configMap = new Map<string, WmtsServerConfig>();
+
+  constructor() {
+    const saved = this.persistence.load<WmtsServerConfig>('wmts.servers');
+    saved.forEach(config => this.addServer(config).catch(() => {}));
+  }
 
   // ─── OgcService contract ──────────────────────────────────────────────────
 
@@ -53,6 +62,8 @@ export class WmtsService implements OgcService {
       const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
       const parsed = this.parseCapabilities(xmlText, id);
       this.updateServer(id, { ...parsed, status: 'ready' });
+      this.configMap.set(id, config);
+      this.persistConfigs();
     } catch (err: any) {
       this.updateServer(id, {
         status: 'error',
@@ -69,6 +80,8 @@ export class WmtsService implements OgcService {
 
     this.activeLayers.update(list => list.filter(l => l.serverId !== serverId));
     this.servers.update(list => list.filter(s => s.id !== serverId));
+    this.configMap.delete(serverId);
+    this.persistConfigs();
   }
 
   // ─── Layer activation ─────────────────────────────────────────────────────
@@ -274,6 +287,10 @@ export class WmtsService implements OgcService {
     } catch {
       return raw.trim();
     }
+  }
+
+  private persistConfigs(): void {
+    this.persistence.save('wmts.servers', Array.from(this.configMap.values()));
   }
 
   private updateServer(id: string, patch: Partial<WmtsServer>): void {

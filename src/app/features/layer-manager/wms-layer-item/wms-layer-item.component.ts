@@ -12,6 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { WmsLayer, WmsServer } from '../../../core/models/wms.model';
 import { WmsService } from '../../../core/services/wms.service';
+import { FeatureInfoService } from '../../../core/services/feature-info.service';
 
 @Component({
   selector: 'app-wms-layer-item',
@@ -57,7 +58,7 @@ import { WmsService } from '../../../core/services/wms.service';
       }
     </div>
 
-    <!-- Opacity slider (shown when layer is active) -->
+    <!-- Controls row (shown when layer is active) -->
     @if (layer.name && wmsService.isLayerActive(layer.id)) {
       <div class="opacity-row" [style.padding-left.px]="depth * 16 + 72">
         <mat-icon class="opacity-icon">opacity</mat-icon>
@@ -68,7 +69,31 @@ import { WmsService } from '../../../core/services/wms.service';
             (valueChange)="setOpacity($event)"
           />
         </mat-slider>
+
+        @if (legendUrl()) {
+          <button mat-icon-button class="legend-btn"
+            (click)="legendVisible.set(!legendVisible())"
+            matTooltip="Légende de la couche">
+            <mat-icon>format_list_bulleted</mat-icon>
+          </button>
+        }
+
+        @if (layer.queryable) {
+          <button mat-icon-button class="identify-btn"
+            [class.active]="featureInfoService.isQueryingLayer(layer.id)"
+            (click)="featureInfoService.toggleQueryLayer(layer.id)"
+            matTooltip="Identifier les entités au clic">
+            <mat-icon>info_outline</mat-icon>
+          </button>
+        }
       </div>
+
+      @if (legendVisible() && legendUrl()) {
+        <div class="legend-panel" [style.padding-left.px]="depth * 16 + 72">
+          <img [src]="legendUrl()" alt="Légende" class="legend-img"
+            (error)="legendVisible.set(false)" />
+        </div>
+      }
     }
 
     <!-- Recursive children -->
@@ -145,7 +170,29 @@ import { WmsService } from '../../../core/services/wms.service';
 
     .opacity-slider {
       flex: 1;
-      max-width: 160px;
+      max-width: 140px;
+    }
+
+    .legend-btn, .identify-btn {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      color: #999;
+      &:hover { color: #1565c0; }
+      &.active { color: #1565c0; }
+    }
+
+    .legend-panel {
+      padding-bottom: 6px;
+    }
+
+    .legend-img {
+      max-width: 240px;
+      max-height: 200px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background: white;
+      display: block;
     }
   `],
 })
@@ -155,12 +202,31 @@ export class WmsLayerItemComponent implements OnInit {
   @Input() depth = 0;
 
   wmsService = inject(WmsService);
+  featureInfoService = inject(FeatureInfoService);
 
   expanded = signal(false);
+  legendVisible = signal(false);
+
+  /** Returns the legend URL from the active style, or a standard GetLegendGraphic URL. */
+  legendUrl = signal<string | null>(null);
 
   ngOnInit(): void {
     // Auto-expand group layers at depth 0
     this.expanded.set(this.depth === 0 && this.layer.children.length > 0);
+
+    // Resolve legend URL: prefer the one parsed from capabilities, fall back to GetLegendGraphic.
+    if (this.layer.name) {
+      const styleLegend = this.layer.styles[0]?.legendUrl;
+      if (styleLegend) {
+        this.legendUrl.set(styleLegend);
+      } else {
+        const sep = this.server.url.includes('?') ? '&' : '?';
+        this.legendUrl.set(
+          `${this.server.url}${sep}SERVICE=WMS&VERSION=${this.server.version}` +
+          `&REQUEST=GetLegendGraphic&LAYER=${encodeURIComponent(this.layer.name)}&FORMAT=image/png`
+        );
+      }
+    }
   }
 
   toggle(): void {

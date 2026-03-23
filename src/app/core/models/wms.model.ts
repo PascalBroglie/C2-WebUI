@@ -54,6 +54,8 @@ export interface ActiveWmsLayer extends OgcActiveLayer {
   layerName: string;
   layerTitle: string;
   style: string;
+  /** True when the server supports GetFeatureInfo on this layer. */
+  queryable: boolean;
   geographicBoundingBox?: WmsBoundingBox;
 }
 

@@ -12,11 +12,13 @@ import {
   WmsVersion,
 } from '../models/wms.model';
 import { CesiumLayerService } from './cesium-layer.service';
+import { PersistenceService } from './persistence.service';
 
 @Injectable({ providedIn: 'root' })
 export class WmsService implements OgcService {
   private http = inject(HttpClient);
   private cesiumLayerService = inject(CesiumLayerService);
+  private persistence = inject(PersistenceService);
 
   // ─── OgcService identity ──────────────────────────────────────────────────
 
@@ -28,6 +30,15 @@ export class WmsService implements OgcService {
 
   readonly servers = signal<WmsServer[]>([]);
   readonly activeLayers = signal<ActiveWmsLayer[]>([]);
+
+  /** Maps serverId → original config for persistence. */
+  private readonly configMap = new Map<string, WmsServerConfig>();
+
+  constructor() {
+    // Restore previously saved servers on startup.
+    const saved = this.persistence.load<WmsServerConfig>('wms.servers');
+    saved.forEach(config => this.addServer(config).catch(() => {}));
+  }
 
   // ─── OgcService contract ──────────────────────────────────────────────────
 
@@ -57,6 +68,8 @@ export class WmsService implements OgcService {
         const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
         const parsed = this.parseCapabilities(xmlText, id);
         this.updateServer(id, { ...parsed, status: 'ready' });
+        this.configMap.set(id, config);
+        this.persistConfigs();
         return;
       } catch {
         // try next version
@@ -77,6 +90,8 @@ export class WmsService implements OgcService {
 
     this.activeLayers.update(list => list.filter(l => l.serverId !== serverId));
     this.servers.update(list => list.filter(s => s.id !== serverId));
+    this.configMap.delete(serverId);
+    this.persistConfigs();
   }
 
   // ─── Layer activation ─────────────────────────────────────────────────────
@@ -95,6 +110,7 @@ export class WmsService implements OgcService {
         serverVersion: server.version,
         layerName: layer.name,
         layerTitle: layer.title,
+        queryable: layer.queryable,
         opacity: 1,
         visible: true,
         style: layer.styles[0]?.name ?? '',
@@ -231,6 +247,10 @@ export class WmsService implements OgcService {
   private buildCapabilitiesUrl(baseUrl: string, version: WmsVersion): string {
     const sep = baseUrl.includes('?') ? '&' : '?';
     return `${baseUrl}${sep}SERVICE=WMS&VERSION=${version}&REQUEST=GetCapabilities`;
+  }
+
+  private persistConfigs(): void {
+    this.persistence.save('wms.servers', Array.from(this.configMap.values()));
   }
 
   private updateServer(id: string, patch: Partial<WmsServer>): void {

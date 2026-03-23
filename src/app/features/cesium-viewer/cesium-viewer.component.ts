@@ -16,9 +16,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as Cesium from 'cesium';
 import { CESIUM_ADAPTERS_TOKEN } from '../../core/builders/ogc-service-registry.builder';
 import { TerrainService } from '../../core/services/terrain.service';
+import { FeatureInfoService } from '../../core/services/feature-info.service';
 import { TerrainDialogComponent } from '../terrain-dialog/terrain-dialog.component';
 import { TerrainProviderConfig } from '../../core/models/terrain.model';
 import { LayerManagerComponent } from '../layer-manager/layer-manager.component';
+import { FeatureInfoPanelComponent } from '../feature-info-panel/feature-info-panel.component';
 
 (window as any)['CESIUM_BASE_URL'] = '/cesium';
 
@@ -31,6 +33,7 @@ import { LayerManagerComponent } from '../layer-manager/layer-manager.component'
     MatTooltipModule,
     MatProgressSpinnerModule,
     LayerManagerComponent,
+    FeatureInfoPanelComponent,
   ],
   template: `
     <div class="viewer-container">
@@ -55,8 +58,11 @@ import { LayerManagerComponent } from '../layer-manager/layer-manager.component'
         }
       </div>
 
-      <!-- WMS + WFS layer manager (top-right) -->
+      <!-- WMS + WFS + WMTS layer manager (top-right) -->
       <app-layer-manager />
+
+      <!-- GetFeatureInfo result panel (bottom-left, above toolbar) -->
+      <app-feature-info-panel />
 
       @if (loading()) {
         <div class="loading-overlay">
@@ -79,6 +85,7 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
   @ViewChild('cesiumContainer', { static: true }) cesiumContainer!: ElementRef<HTMLDivElement>;
 
   terrainService = inject(TerrainService);
+  private featureInfoService = inject(FeatureInfoService);
 
   // All Cesium adapters registered via OgcServiceRegistryBuilder
   private cesiumAdapters = inject(CESIUM_ADAPTERS_TOKEN);
@@ -127,6 +134,17 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
 
     // Initialise all registered Cesium data adapters (WMS, WFS, …) uniformly
     this.cesiumAdapters.forEach(adapter => adapter.setViewer(this.viewer));
+
+    // GetFeatureInfo: query active WMS layers on left-click.
+    this.viewer.screenSpaceEventHandler.setInputAction(
+      (movement: { position: Cesium.Cartesian2 }) => {
+        this.featureInfoService.query(
+          { x: movement.position.x, y: movement.position.y },
+          this.viewer
+        );
+      },
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
   }
 
   openTerrainDialog(): void {
