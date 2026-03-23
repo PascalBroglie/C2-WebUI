@@ -15,8 +15,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as Cesium from 'cesium';
 import { TerrainService } from '../../core/services/terrain.service';
+import { CesiumLayerService } from '../../core/services/cesium-layer.service';
 import { TerrainDialogComponent } from '../terrain-dialog/terrain-dialog.component';
 import { TerrainProviderConfig } from '../../core/models/terrain.model';
+import { LayerManagerComponent } from '../layer-manager/layer-manager.component';
 
 // Required by CesiumJS to locate its static assets at runtime
 (window as any)['CESIUM_BASE_URL'] = '/cesium';
@@ -29,6 +31,7 @@ import { TerrainProviderConfig } from '../../core/models/terrain.model';
     MatIconModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    LayerManagerComponent,
   ],
   template: `
     <div class="viewer-container">
@@ -58,6 +61,9 @@ import { TerrainProviderConfig } from '../../core/models/terrain.model';
           </div>
         }
       </div>
+
+      <!-- WMS Layer Manager panel (top-right) -->
+      <app-layer-manager />
 
       @if (loading()) {
         <div class="loading-overlay">
@@ -126,6 +132,7 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
   @ViewChild('cesiumContainer', { static: true }) cesiumContainer!: ElementRef<HTMLDivElement>;
 
   terrainService = inject(TerrainService);
+  private cesiumLayerService = inject(CesiumLayerService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -167,6 +174,7 @@ export class CesiumViewerComponent implements OnInit, OnDestroy {
     });
 
     this.terrainService.setViewer(this.viewer);
+    this.cesiumLayerService.setViewer(this.viewer);
 
     // Enable depth testing so terrain occludes objects correctly
     this.viewer.scene.globe.depthTestAgainstTerrain = true;

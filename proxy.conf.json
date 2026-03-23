@@ -1,0 +1,9 @@
+{
+  "/wms-proxy": {
+    "target": "https://geoservices.brgm.fr",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/wms-proxy": "" },
+    "logLevel": "debug"
+  }
+}
