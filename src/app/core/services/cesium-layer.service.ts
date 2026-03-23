@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import * as Cesium from 'cesium';
+import { CesiumDataAdapter } from '../models/ogc.model';
 import { ActiveWmsLayer } from '../models/wms.model';
 
 @Injectable({ providedIn: 'root' })
-export class CesiumLayerService {
+export class CesiumLayerService implements CesiumDataAdapter {
   private viewer: Cesium.Viewer | null = null;
   private layerMap = new Map<string, Cesium.ImageryLayer>();
 
-  setViewer(viewer: Cesium.Viewer): void {
-    this.viewer = viewer;
+  setViewer(viewer: unknown): void {
+    this.viewer = viewer as Cesium.Viewer;
   }
 
   addLayer(activeLayer: ActiveWmsLayer): void {
@@ -28,19 +29,13 @@ export class CesiumLayerService {
     const imageryLayer = this.viewer.imageryLayers.addImageryProvider(provider);
     imageryLayer.alpha = activeLayer.opacity;
     imageryLayer.show = activeLayer.visible;
-
     this.layerMap.set(activeLayer.layerId, imageryLayer);
 
-    // Auto-zoom to layer extent if available
     if (activeLayer.geographicBoundingBox) {
       const bbox = activeLayer.geographicBoundingBox;
-      const rectangle = Cesium.Rectangle.fromDegrees(
-        bbox.minX,
-        bbox.minY,
-        bbox.maxX,
-        bbox.maxY
-      );
-      this.viewer.camera.flyTo({ destination: rectangle });
+      this.viewer.camera.flyTo({
+        destination: Cesium.Rectangle.fromDegrees(bbox.minX, bbox.minY, bbox.maxX, bbox.maxY),
+      });
     }
   }
 
@@ -60,6 +55,13 @@ export class CesiumLayerService {
   setVisibility(layerId: string, visible: boolean): void {
     const layer = this.layerMap.get(layerId);
     if (layer) layer.show = visible;
+  }
+
+  zoomTo(layerId: string): void {
+    const layer = this.layerMap.get(layerId);
+    if (layer && this.viewer) {
+      this.viewer.camera.flyTo({ destination: layer.imageryProvider.rectangle });
+    }
   }
 
   moveLayerUp(layerId: string): void {

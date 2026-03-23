@@ -24,7 +24,7 @@ import { WfsService } from '../../../core/services/wfs.service';
   template: `
     <div class="feature-row">
       <!-- Loading spinner / geometry icon -->
-      @if (activeLayer()?.status === 'loading') {
+      @if (activeLayer()?.loadStatus === 'loading') {
         <mat-spinner diameter="16" class="spinner" />
       } @else {
         <mat-icon class="geo-icon" [style.color]="activeLayer()?.style?.color ?? '#666'">
@@ -36,7 +36,7 @@ import { WfsService } from '../../../core/services/wfs.service';
       <mat-checkbox
         class="feature-label"
         [checked]="wfsService.isFeatureTypeActive(ft.id)"
-        [disabled]="activeLayer()?.status === 'loading'"
+        [disabled]="activeLayer()?.loadStatus === 'loading'"
         (change)="toggle()"
         [matTooltip]="ft.abstract ?? ft.name"
         matTooltipShowDelay="800"
@@ -45,7 +45,7 @@ import { WfsService } from '../../../core/services/wfs.service';
       </mat-checkbox>
 
       <!-- Feature count badge -->
-      @if (activeLayer()?.status === 'ready') {
+      @if (activeLayer()?.loadStatus === 'ready') {
         <span class="count-badge" [matTooltip]="'Entités chargées'">
           {{ activeLayer()!.featureCount | number }}
         </span>
@@ -65,7 +65,7 @@ import { WfsService } from '../../../core/services/wfs.service';
     </div>
 
     <!-- Error message -->
-    @if (activeLayer()?.status === 'error') {
+    @if (activeLayer()?.loadStatus === 'error') {
       <div class="error-row">
         <mat-icon>warning</mat-icon>
         <span>{{ activeLayer()?.error }}</span>
@@ -73,7 +73,7 @@ import { WfsService } from '../../../core/services/wfs.service';
     }
 
     <!-- Controls: opacity + color (visible when active and ready) -->
-    @if (activeLayer()?.status === 'ready') {
+    @if (activeLayer()?.loadStatus === 'ready') {
       <div class="controls-row">
         <!-- Opacity -->
         <mat-icon class="ctrl-icon" matTooltip="Opacité">opacity</mat-icon>

@@ -1,5 +1,17 @@
+import { OgcActiveLayer, OgcServer, OgcServerConfig } from './ogc.model';
+
 export type WmsVersion = '1.1.1' | '1.3.0';
 export type WmsServerStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+// ─── WMS-specific server connection config ────────────────────────────────────
+
+export interface WmsServerConfig extends OgcServerConfig {
+  preferredVersion: WmsVersion;
+  preferredCrs: string;
+  preferredFormat: string;
+}
+
+// ─── WMS server / layer value objects ────────────────────────────────────────
 
 export interface WmsStyle {
   name: string;
@@ -16,9 +28,7 @@ export interface WmsBoundingBox {
 }
 
 export interface WmsLayer {
-  /** Unique identifier: `<serverId>::<name>` */
   id: string;
-  /** WMS layer name used in requests (empty for group layers) */
   name: string;
   title: string;
   abstract?: string;
@@ -30,26 +40,21 @@ export interface WmsLayer {
   opaque: boolean;
 }
 
-export interface WmsServer {
-  id: string;
-  url: string;
-  title: string;
+/** Extends the shared OgcServer with WMS-specific fields. */
+export interface WmsServer extends OgcServer {
   abstract?: string;
   version: WmsVersion;
-  status: WmsServerStatus;
-  error?: string;
   layers: WmsLayer[];
 }
 
-export interface ActiveWmsLayer {
-  layerId: string;
-  serverId: string;
+/** Extends the shared OgcActiveLayer with WMS rendering options. */
+export interface ActiveWmsLayer extends OgcActiveLayer {
   serverUrl: string;
   serverVersion: WmsVersion;
   layerName: string;
   layerTitle: string;
-  opacity: number;
-  visible: boolean;
   style: string;
   geographicBoundingBox?: WmsBoundingBox;
 }
+
+export const DEFAULT_TERRAIN_PROVIDERS = []; // kept for backwards compat

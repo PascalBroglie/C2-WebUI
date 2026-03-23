@@ -1,64 +1,76 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { OgcActiveLayer, OgcServer, OgcServerConfig, OgcService, OgcServiceType } from '../models/ogc.model';
 import {
   ActiveWmsLayer,
   WmsBoundingBox,
   WmsLayer,
   WmsServer,
-  WmsServerStatus,
+  WmsServerConfig,
   WmsStyle,
   WmsVersion,
 } from '../models/wms.model';
 import { CesiumLayerService } from './cesium-layer.service';
 
 @Injectable({ providedIn: 'root' })
-export class WmsService {
+export class WmsService implements OgcService {
   private http = inject(HttpClient);
   private cesiumLayerService = inject(CesiumLayerService);
+
+  // ─── OgcService identity ──────────────────────────────────────────────────
+
+  readonly serviceType: OgcServiceType = 'WMS';
+  readonly label = 'WMS';
+  readonly icon = 'map';
+
+  // ─── OgcService state ─────────────────────────────────────────────────────
 
   readonly servers = signal<WmsServer[]>([]);
   readonly activeLayers = signal<ActiveWmsLayer[]>([]);
 
-  // ─── Server management ───────────────────────────────────────────────────────
+  // ─── OgcService contract ──────────────────────────────────────────────────
 
-  async addServer(rawUrl: string): Promise<void> {
-    const url = this.normalizeUrl(rawUrl);
+  /**
+   * Adds a WMS server by fetching its GetCapabilities document.
+   * Accepts OgcServerConfig (interface) and narrows to WmsServerConfig internally.
+   * Type safety is guaranteed upstream by WmsServerConfigBuilder.
+   */
+  async addServer(rawConfig: OgcServerConfig): Promise<void> {
+    const config = rawConfig as WmsServerConfig;
+    const url = this.normalizeUrl(config.url);
     const id = crypto.randomUUID();
 
     this.servers.update(list => [
       ...list,
-      { id, url, title: url, version: '1.3.0', status: 'loading', layers: [] },
+      { id, url, title: config.label ?? url, version: '1.3.0', status: 'loading', layers: [] },
     ]);
 
-    try {
-      const capUrl = this.buildGetCapabilitiesUrl(url, '1.3.0');
-      const xmlText = await firstValueFrom(
-        this.http.get(capUrl, { responseType: 'text' })
-      );
-      const parsed = this.parseCapabilities(xmlText, id);
-      this.updateServer(id, { ...parsed, status: 'ready' });
-    } catch (err: any) {
-      // Fallback: try WMS 1.1.1 if 1.3.0 failed
+    const versionsToTry: WmsVersion[] = [
+      config.preferredVersion ?? '1.3.0',
+      config.preferredVersion === '1.1.1' ? '1.3.0' : '1.1.1',
+    ];
+
+    for (const version of versionsToTry) {
       try {
-        const capUrl = this.buildGetCapabilitiesUrl(url, '1.1.1');
-        const xmlText = await firstValueFrom(
-          this.http.get(capUrl, { responseType: 'text' })
-        );
+        const capUrl = this.buildCapabilitiesUrl(url, version);
+        const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
         const parsed = this.parseCapabilities(xmlText, id);
         this.updateServer(id, { ...parsed, status: 'ready' });
-      } catch (err2: any) {
-        this.updateServer(id, {
-          status: 'error',
-          error: err2?.message ?? 'Impossible de récupérer le GetCapabilities',
-        });
-        throw err2;
+        return;
+      } catch {
+        // try next version
       }
     }
+
+    this.updateServer(id, {
+      status: 'error',
+      error: 'Impossible de récupérer le GetCapabilities (WMS 1.3.0 et 1.1.1)',
+    });
+    throw new Error('WMS GetCapabilities failed');
   }
 
   removeServer(serverId: string): void {
-    // Clean up all active layers belonging to this server
     this.activeLayers()
       .filter(l => l.serverId === serverId)
       .forEach(l => this.cesiumLayerService.removeLayer(l.layerId));
@@ -67,18 +79,16 @@ export class WmsService {
     this.servers.update(list => list.filter(s => s.id !== serverId));
   }
 
-  // ─── Layer activation ────────────────────────────────────────────────────────
+  // ─── Layer activation ─────────────────────────────────────────────────────
 
   toggleLayer(server: WmsServer, layer: WmsLayer): void {
-    if (!layer.name) return; // Group layers cannot be activated
+    if (!layer.name) return;
 
-    const alreadyActive = this.isLayerActive(layer.id);
-
-    if (alreadyActive) {
+    if (this.isLayerActive(layer.id)) {
       this.cesiumLayerService.removeLayer(layer.id);
       this.activeLayers.update(list => list.filter(l => l.layerId !== layer.id));
     } else {
-      const activeLayer: ActiveWmsLayer = {
+      const active: ActiveWmsLayer = {
         layerId: layer.id,
         serverId: server.id,
         serverUrl: server.url,
@@ -90,8 +100,8 @@ export class WmsService {
         style: layer.styles[0]?.name ?? '',
         geographicBoundingBox: layer.geographicBoundingBox,
       };
-      this.cesiumLayerService.addLayer(activeLayer);
-      this.activeLayers.update(list => [...list, activeLayer]);
+      this.cesiumLayerService.addLayer(active);
+      this.activeLayers.update(list => [...list, active]);
     }
   }
 
@@ -99,48 +109,21 @@ export class WmsService {
     return this.activeLayers().some(l => l.layerId === layerId);
   }
 
-  setLayerOpacity(layerId: string, opacity: number): void {
-    this.cesiumLayerService.setOpacity(layerId, opacity);
-    this.activeLayers.update(list =>
-      list.map(l => (l.layerId === layerId ? { ...l, opacity } : l))
-    );
-  }
-
-  setLayerVisibility(layerId: string, visible: boolean): void {
-    this.cesiumLayerService.setVisibility(layerId, visible);
-    this.activeLayers.update(list =>
-      list.map(l => (l.layerId === layerId ? { ...l, visible } : l))
-    );
-  }
-
   getActiveLayer(layerId: string): ActiveWmsLayer | undefined {
     return this.activeLayers().find(l => l.layerId === layerId);
   }
 
-  // ─── URL helpers ─────────────────────────────────────────────────────────────
-
-  private normalizeUrl(raw: string): string {
-    try {
-      const u = new URL(raw.trim());
-      // Strip query parameters — GetCapabilities will add its own
-      return `${u.origin}${u.pathname}`;
-    } catch {
-      return raw.trim();
-    }
+  setLayerOpacity(layerId: string, opacity: number): void {
+    this.cesiumLayerService.setOpacity(layerId, opacity);
+    this.updateActiveLayer(layerId, { opacity });
   }
 
-  private buildGetCapabilitiesUrl(baseUrl: string, version: WmsVersion): string {
-    const sep = baseUrl.includes('?') ? '&' : '?';
-    return `${baseUrl}${sep}SERVICE=WMS&VERSION=${version}&REQUEST=GetCapabilities`;
+  setLayerVisibility(layerId: string, visible: boolean): void {
+    this.cesiumLayerService.setVisibility(layerId, visible);
+    this.updateActiveLayer(layerId, { visible });
   }
 
-  private updateServer(id: string, patch: Partial<WmsServer>): void {
-    this.servers.update(list =>
-      list.map(s => (s.id === id ? { ...s, ...patch } : s))
-    );
-  }
-
-  // ─── GetCapabilities XML parsing ─────────────────────────────────────────────
+  // ─── GetCapabilities parsing ──────────────────────────────────────────────
 
   private parseCapabilities(
     xmlText: string,
@@ -155,27 +138,22 @@ export class WmsService {
 
     const root = doc.documentElement;
     const version = (root.getAttribute('version') ?? '1.3.0') as WmsVersion;
-
-    const title =
-      doc.querySelector('Service > Title')?.textContent?.trim() ?? 'Serveur WMS';
-    const abstract =
-      doc.querySelector('Service > Abstract')?.textContent?.trim() ?? '';
+    const title = doc.querySelector('Service > Title')?.textContent?.trim() ?? 'Serveur WMS';
+    const abstract = doc.querySelector('Service > Abstract')?.textContent?.trim() ?? '';
 
     const rootLayerEl = doc.querySelector('Capability > Layer');
-    const layers = rootLayerEl
-      ? this.parseChildLayers(rootLayerEl, serverId, [], version)
-      : [];
+    const layers = rootLayerEl ? this.parseChildLayers(rootLayerEl, serverId, [], version) : [];
 
     return { title, abstract, version, layers };
   }
 
   private parseChildLayers(
-    parentEl: Element,
+    parent: Element,
     serverId: string,
     inheritedCrs: string[],
     version: WmsVersion
   ): WmsLayer[] {
-    return Array.from(parentEl.children)
+    return Array.from(parent.children)
       .filter(el => el.tagName === 'Layer')
       .map(el => this.parseLayer(el, serverId, inheritedCrs, version));
   }
@@ -187,50 +165,31 @@ export class WmsService {
     version: WmsVersion
   ): WmsLayer {
     const name = el.querySelector(':scope > Name')?.textContent?.trim() ?? '';
-    const title =
-      el.querySelector(':scope > Title')?.textContent?.trim() ?? '(sans titre)';
+    const title = el.querySelector(':scope > Title')?.textContent?.trim() ?? '(sans titre)';
     const abstract = el.querySelector(':scope > Abstract')?.textContent?.trim();
     const queryable = el.getAttribute('queryable') === '1';
     const opaque = el.getAttribute('opaque') === '1';
 
-    // CRS / SRS (inherited + own)
     const crsTag = version === '1.3.0' ? 'CRS' : 'SRS';
     const ownCrs = Array.from(el.querySelectorAll(`:scope > ${crsTag}`))
       .map(e => e.textContent?.trim() ?? '')
       .filter(Boolean);
     const crs = [...new Set([...inheritedCrs, ...ownCrs])];
 
-    // Geographic bounding box (WMS 1.3.0 = EX_GeographicBoundingBox, 1.1.1 = LatLonBoundingBox)
     const geographicBoundingBox =
       this.parseExGeographicBbox(el) ?? this.parseLatLonBbox(el);
 
-    // Styles
-    const styles: WmsStyle[] = Array.from(
-      el.querySelectorAll(':scope > Style')
-    ).map(styleEl => ({
-      name: styleEl.querySelector('Name')?.textContent?.trim() ?? '',
-      title: styleEl.querySelector('Title')?.textContent?.trim() ?? '',
-      legendUrl:
-        styleEl
-          .querySelector('LegendURL OnlineResource')
-          ?.getAttribute('xlink:href') ?? undefined,
+    const styles: WmsStyle[] = Array.from(el.querySelectorAll(':scope > Style')).map(s => ({
+      name: s.querySelector('Name')?.textContent?.trim() ?? '',
+      title: s.querySelector('Title')?.textContent?.trim() ?? '',
+      legendUrl: s.querySelector('LegendURL OnlineResource')?.getAttribute('xlink:href') ?? undefined,
     }));
 
     const children = this.parseChildLayers(el, serverId, crs, version);
 
     return {
-      id: name
-        ? `${serverId}::${name}`
-        : `${serverId}::group::${crypto.randomUUID()}`,
-      name,
-      title,
-      abstract,
-      crs,
-      geographicBoundingBox,
-      styles,
-      children,
-      queryable,
-      opaque,
+      id: name ? `${serverId}::${name}` : `${serverId}::group::${crypto.randomUUID()}`,
+      name, title, abstract, crs, geographicBoundingBox, styles, children, queryable, opaque,
     };
   }
 
@@ -256,5 +215,31 @@ export class WmsService {
       maxX: parseFloat(bbox.getAttribute('maxx') ?? '0'),
       maxY: parseFloat(bbox.getAttribute('maxy') ?? '0'),
     };
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  private normalizeUrl(raw: string): string {
+    try {
+      const u = new URL(raw.trim());
+      return `${u.origin}${u.pathname}`;
+    } catch {
+      return raw.trim();
+    }
+  }
+
+  private buildCapabilitiesUrl(baseUrl: string, version: WmsVersion): string {
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${sep}SERVICE=WMS&VERSION=${version}&REQUEST=GetCapabilities`;
+  }
+
+  private updateServer(id: string, patch: Partial<WmsServer>): void {
+    this.servers.update(list => list.map(s => (s.id === id ? { ...s, ...patch } : s)));
+  }
+
+  private updateActiveLayer(layerId: string, patch: Partial<ActiveWmsLayer>): void {
+    this.activeLayers.update(list =>
+      list.map(l => (l.layerId === layerId ? { ...l, ...patch } : l))
+    );
   }
 }

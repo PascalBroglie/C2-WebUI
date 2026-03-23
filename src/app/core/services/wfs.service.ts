@@ -1,17 +1,18 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { OgcServerConfig, OgcService, OgcServiceType } from '../models/ogc.model';
 import {
   ActiveWfsLayer,
   WfsBoundingBox,
   WfsFeatureType,
   WfsServer,
+  WfsServerConfig,
   WfsVersion,
   WFS_COLOR_PALETTE,
 } from '../models/wfs.model';
 import { CesiumWfsService } from './cesium-wfs.service';
 
-/** GeoJSON output format identifiers, in preference order */
 const JSON_FORMATS = [
   'application/json',
   'application/vnd.geo+json',
@@ -21,81 +22,94 @@ const JSON_FORMATS = [
 ];
 
 @Injectable({ providedIn: 'root' })
-export class WfsService {
+export class WfsService implements OgcService {
   private http = inject(HttpClient);
   private cesiumWfsService = inject(CesiumWfsService);
+
+  // ─── OgcService identity ──────────────────────────────────────────────────
+
+  readonly serviceType: OgcServiceType = 'WFS';
+  readonly label = 'WFS';
+  readonly icon = 'polyline';
+
+  // ─── OgcService state ─────────────────────────────────────────────────────
 
   readonly servers = signal<WfsServer[]>([]);
   readonly activeLayers = signal<ActiveWfsLayer[]>([]);
 
-  // ─── Server management ───────────────────────────────────────────────────────
+  // ─── OgcService contract ──────────────────────────────────────────────────
 
-  async addServer(rawUrl: string): Promise<void> {
-    const url = this.normalizeUrl(rawUrl);
+  /**
+   * Adds a WFS server by fetching its GetCapabilities document.
+   * Accepts OgcServerConfig (interface) and narrows to WfsServerConfig internally.
+   * Type safety is guaranteed upstream by WfsServerConfigBuilder.
+   */
+  async addServer(rawConfig: OgcServerConfig): Promise<void> {
+    const config = rawConfig as WfsServerConfig;
+    const url = this.normalizeUrl(config.url);
     const id = crypto.randomUUID();
 
     this.servers.update(list => [
       ...list,
       {
-        id, url, title: url, version: '2.0.0', status: 'loading',
+        id, url, title: config.label ?? url, version: '2.0.0', status: 'loading',
         featureTypes: [], jsonOutputFormats: [],
       },
     ]);
 
-    try {
-      const parsed = await this.fetchCapabilities(url, '2.0.0', id);
-      this.updateServer(id, { ...parsed, status: 'ready' });
-    } catch {
-      // Fallback to WFS 1.1.0
+    const versionsToTry: WfsVersion[] = [
+      config.preferredVersion ?? '2.0.0',
+      config.preferredVersion === '1.1.0' ? '2.0.0' : '1.1.0',
+    ];
+
+    for (const version of versionsToTry) {
       try {
-        const parsed = await this.fetchCapabilities(url, '1.1.0', id);
+        const capUrl = `${url}?SERVICE=WFS&VERSION=${version}&REQUEST=GetCapabilities`;
+        const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
+        const parsed = this.parseCapabilities(xmlText, id, config);
         this.updateServer(id, { ...parsed, status: 'ready' });
-      } catch (err: any) {
-        this.updateServer(id, {
-          status: 'error',
-          error: err?.message ?? 'Impossible de récupérer le GetCapabilities WFS',
-        });
-        throw err;
+        return;
+      } catch {
+        // try next version
       }
     }
+
+    this.updateServer(id, {
+      status: 'error',
+      error: 'Impossible de récupérer le GetCapabilities (WFS 2.0.0 et 1.1.0)',
+    });
+    throw new Error('WFS GetCapabilities failed');
   }
 
   removeServer(serverId: string): void {
     this.activeLayers()
       .filter(l => l.serverId === serverId)
-      .forEach(l => {
-        this.cesiumWfsService.removeDataSource(l.featureTypeId);
-      });
+      .forEach(l => this.cesiumWfsService.removeLayer(l.layerId));
 
     this.activeLayers.update(list => list.filter(l => l.serverId !== serverId));
     this.servers.update(list => list.filter(s => s.id !== serverId));
   }
 
-  // ─── Feature type activation ─────────────────────────────────────────────────
+  // ─── Feature type activation ──────────────────────────────────────────────
 
   async toggleFeatureType(server: WfsServer, ft: WfsFeatureType): Promise<void> {
-    const isActive = this.isFeatureTypeActive(ft.id);
-
-    if (isActive) {
-      this.cesiumWfsService.removeDataSource(ft.id);
-      this.activeLayers.update(list => list.filter(l => l.featureTypeId !== ft.id));
+    if (this.isFeatureTypeActive(ft.id)) {
+      this.cesiumWfsService.removeLayer(ft.id);
+      this.activeLayers.update(list => list.filter(l => l.layerId !== ft.id));
       return;
     }
 
-    // Resolve GeoJSON output format
     const outputFormat = this.resolveJsonFormat(server, ft);
     if (!outputFormat) {
       throw new Error(
-        `Le serveur ne supporte pas de format GeoJSON pour la couche "${ft.title}". ` +
-        `Formats disponibles : ${ft.outputFormats.join(', ')}`
+        `Aucun format GeoJSON disponible pour "${ft.title}". ` +
+        `Formats : ${ft.outputFormats.join(', ')}`
       );
     }
 
     const colorIndex = this.activeLayers().length % WFS_COLOR_PALETTE.length;
-    const color = WFS_COLOR_PALETTE[colorIndex];
-
     const activeLayer: ActiveWfsLayer = {
-      featureTypeId: ft.id,
+      layerId: ft.id,
       serverId: server.id,
       serverUrl: server.url,
       serverVersion: server.version,
@@ -103,9 +117,10 @@ export class WfsService {
       featureTypeTitle: ft.title,
       outputFormat,
       featureCount: 0,
-      status: 'loading',
-      style: { color, opacity: 0.85, strokeWidth: 2 },
+      loadStatus: 'loading',
+      style: { color: WFS_COLOR_PALETTE[colorIndex], opacity: 0.85, strokeWidth: 2 },
       visible: true,
+      opacity: 0.85,
       boundingBox: ft.boundingBox,
     };
 
@@ -114,92 +129,70 @@ export class WfsService {
     try {
       const geoJson = await this.fetchFeatures(server, ft, outputFormat);
       const count = (geoJson as any)?.features?.length ?? 0;
-
-      this.updateActiveLayer(ft.id, { status: 'ready', featureCount: count });
-
+      this.updateActiveLayer(ft.id, { loadStatus: 'ready', featureCount: count });
       await this.cesiumWfsService.loadGeoJson(ft.id, geoJson, activeLayer.style, ft.boundingBox);
     } catch (err: any) {
       this.updateActiveLayer(ft.id, {
-        status: 'error',
+        loadStatus: 'error',
         error: err?.message ?? 'Erreur lors du chargement des entités',
       });
       throw err;
     }
   }
 
-  isFeatureTypeActive(featureTypeId: string): boolean {
-    return this.activeLayers().some(l => l.featureTypeId === featureTypeId);
+  isFeatureTypeActive(layerId: string): boolean {
+    return this.activeLayers().some(l => l.layerId === layerId);
   }
 
-  getActiveLayer(featureTypeId: string): ActiveWfsLayer | undefined {
-    return this.activeLayers().find(l => l.featureTypeId === featureTypeId);
+  getActiveLayer(layerId: string): ActiveWfsLayer | undefined {
+    return this.activeLayers().find(l => l.layerId === layerId);
   }
 
-  setOpacity(featureTypeId: string, opacity: number): void {
-    this.cesiumWfsService.setOpacity(featureTypeId, opacity);
-    this.updateActiveLayer(featureTypeId, {
-      style: { ...this.getActiveLayer(featureTypeId)!.style, opacity },
-    });
+  setOpacity(layerId: string, opacity: number): void {
+    this.cesiumWfsService.setOpacity(layerId, opacity);
+    this.updateActiveLayer(layerId, { opacity, style: { ...this.getActiveLayer(layerId)!.style, opacity } });
   }
 
-  setColor(featureTypeId: string, color: string): void {
-    this.cesiumWfsService.setColor(featureTypeId, color);
-    this.updateActiveLayer(featureTypeId, {
-      style: { ...this.getActiveLayer(featureTypeId)!.style, color },
-    });
+  setColor(layerId: string, color: string): void {
+    this.cesiumWfsService.setColor(layerId, color);
+    this.updateActiveLayer(layerId, { style: { ...this.getActiveLayer(layerId)!.style, color } });
   }
 
-  setVisibility(featureTypeId: string, visible: boolean): void {
-    this.cesiumWfsService.setVisibility(featureTypeId, visible);
-    this.updateActiveLayer(featureTypeId, { visible });
+  setVisibility(layerId: string, visible: boolean): void {
+    this.cesiumWfsService.setVisibility(layerId, visible);
+    this.updateActiveLayer(layerId, { visible });
   }
 
-  zoomTo(featureTypeId: string): void {
-    this.cesiumWfsService.zoomTo(featureTypeId);
+  zoomTo(layerId: string): void {
+    this.cesiumWfsService.zoomTo(layerId);
   }
 
-  // ─── GetCapabilities parsing ──────────────────────────────────────────────────
-
-  private async fetchCapabilities(
-    url: string,
-    version: WfsVersion,
-    serverId: string
-  ): Promise<Partial<WfsServer>> {
-    const capUrl = `${url}?SERVICE=WFS&VERSION=${version}&REQUEST=GetCapabilities`;
-    const xmlText = await firstValueFrom(this.http.get(capUrl, { responseType: 'text' }));
-    return this.parseCapabilities(xmlText, serverId, version);
-  }
+  // ─── GetCapabilities parsing ──────────────────────────────────────────────
 
   private parseCapabilities(
     xmlText: string,
     serverId: string,
-    hintVersion: WfsVersion
+    config: WfsServerConfig
   ): Partial<WfsServer> {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, 'text/xml');
 
-    if (doc.querySelector('parsererror')) {
-      throw new Error('Réponse XML invalide du serveur WFS');
-    }
+    if (doc.querySelector('parsererror')) throw new Error('XML invalide');
 
     const root = doc.documentElement;
-    const version = (root.getAttribute('version') ?? hintVersion) as WfsVersion;
+    const version = (root.getAttribute('version') ?? config.preferredVersion) as WfsVersion;
 
-    // Service title (OWS namespace for 2.0, Service element for 1.x)
     const title =
       doc.querySelector('ServiceIdentification > Title')?.textContent?.trim() ??
       doc.querySelector('Service > Title')?.textContent?.trim() ??
-      'Serveur WFS';
+      config.label ?? 'Serveur WFS';
 
     const abstract =
       doc.querySelector('ServiceIdentification > Abstract')?.textContent?.trim() ??
-      doc.querySelector('Service > Abstract')?.textContent?.trim() ??
-      '';
+      doc.querySelector('Service > Abstract')?.textContent?.trim() ?? '';
 
-    // Server-level GeoJSON output formats from OperationsMetadata
     const jsonOutputFormats = this.parseServerJsonFormats(doc);
 
-    // Feature types
     const featureTypes = Array.from(doc.querySelectorAll('FeatureTypeList > FeatureType'))
       .map(el => this.parseFeatureType(el, serverId, version, jsonOutputFormats));
 
@@ -207,7 +200,6 @@ export class WfsService {
   }
 
   private parseServerJsonFormats(doc: Document): string[] {
-    // WFS 2.0: ows:Operation[@name='GetFeature'] > ows:Parameter[@name='outputFormat'] > ows:AllowedValues > ows:Value
     const values = Array.from(
       doc.querySelectorAll(
         'Operation[name="GetFeature"] Parameter[name="outputFormat"] Value, ' +
@@ -215,13 +207,12 @@ export class WfsService {
       )
     ).map(el => el.textContent?.trim() ?? '');
 
-    // WFS 1.x: ResultFormat elements
-    const legacyValues = Array.from(
-      doc.querySelectorAll('GetFeature ResultFormat *')
-    ).map(el => el.tagName);
+    const legacyValues = Array.from(doc.querySelectorAll('GetFeature ResultFormat *'))
+      .map(el => el.tagName);
 
-    const all = [...values, ...legacyValues].filter(Boolean);
-    return all.filter(f => JSON_FORMATS.some(j => f.toLowerCase().includes(j)));
+    return [...values, ...legacyValues]
+      .filter(Boolean)
+      .filter(f => JSON_FORMATS.some(j => f.toLowerCase().includes(j)));
   }
 
   private parseFeatureType(
@@ -234,7 +225,6 @@ export class WfsService {
     const title = el.querySelector('Title')?.textContent?.trim() ?? name;
     const abstract = el.querySelector('Abstract')?.textContent?.trim();
 
-    // CRS: WFS 2.0 = DefaultCRS, WFS 1.x = DefaultSRS
     const defaultCrs =
       el.querySelector('DefaultCRS')?.textContent?.trim() ??
       el.querySelector('DefaultSRS')?.textContent?.trim() ??
@@ -245,26 +235,17 @@ export class WfsService {
       ...Array.from(el.querySelectorAll('OtherSRS')).map(e => e.textContent?.trim() ?? ''),
     ].filter(Boolean);
 
-    // Bounding box: WGS84BoundingBox (2.0) or LatLongBoundingBox (1.x)
     const boundingBox =
       this.parseWgs84BoundingBox(el) ?? this.parseLatLongBoundingBox(el);
 
-    // Per-feature-type output formats (override or inherit server-level)
     const ftFormats = Array.from(el.querySelectorAll('OutputFormats Value'))
       .map(e => e.textContent?.trim() ?? '')
       .filter(f => JSON_FORMATS.some(j => f.toLowerCase().includes(j)));
 
-    const outputFormats = ftFormats.length > 0 ? ftFormats : serverJsonFormats;
-
     return {
       id: `${serverId}::${name}`,
-      name,
-      title,
-      abstract,
-      defaultCrs,
-      otherCrs,
-      boundingBox,
-      outputFormats,
+      name, title, abstract, defaultCrs, otherCrs, boundingBox,
+      outputFormats: ftFormats.length > 0 ? ftFormats : serverJsonFormats,
     };
   }
 
@@ -275,10 +256,8 @@ export class WfsService {
     const upper = bbox.querySelector('UpperCorner')?.textContent?.trim().split(' ');
     if (!lower || !upper || lower.length < 2 || upper.length < 2) return undefined;
     return {
-      minX: parseFloat(lower[0]),
-      minY: parseFloat(lower[1]),
-      maxX: parseFloat(upper[0]),
-      maxY: parseFloat(upper[1]),
+      minX: parseFloat(lower[0]), minY: parseFloat(lower[1]),
+      maxX: parseFloat(upper[0]), maxY: parseFloat(upper[1]),
     };
   }
 
@@ -293,29 +272,14 @@ export class WfsService {
     };
   }
 
-  // ─── GetFeature ───────────────────────────────────────────────────────────────
+  // ─── GetFeature ───────────────────────────────────────────────────────────
 
   private async fetchFeatures(
     server: WfsServer,
     ft: WfsFeatureType,
     outputFormat: string
   ): Promise<object> {
-    const url = this.buildGetFeatureUrl(server, ft, outputFormat);
-    const response = await firstValueFrom(
-      this.http.get<object>(url, { responseType: 'json' as const })
-    );
-    return response;
-  }
-
-  private buildGetFeatureUrl(
-    server: WfsServer,
-    ft: WfsFeatureType,
-    outputFormat: string
-  ): string {
-    const base = server.url;
-    const sep = base.includes('?') ? '&' : '?';
     const is2x = server.version === '2.0.0';
-
     const params = new URLSearchParams({
       SERVICE: 'WFS',
       VERSION: server.version,
@@ -323,14 +287,15 @@ export class WfsService {
       [is2x ? 'TYPENAMES' : 'TYPENAME']: ft.name,
       OUTPUTFORMAT: outputFormat,
       [is2x ? 'COUNT' : 'MAXFEATURES']: '2000',
-      // Request WGS84 to ensure Cesium-compatible coordinates
       SRSNAME: is2x ? 'urn:ogc:def:crs:EPSG::4326' : 'EPSG:4326',
     });
-
-    return `${base}${sep}${params.toString()}`;
+    const sep = server.url.includes('?') ? '&' : '?';
+    return firstValueFrom(
+      this.http.get<object>(`${server.url}${sep}${params}`, { responseType: 'json' as const })
+    );
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private resolveJsonFormat(server: WfsServer, ft: WfsFeatureType): string | null {
     const candidates = ft.outputFormats.length > 0 ? ft.outputFormats : server.jsonOutputFormats;
@@ -351,14 +316,12 @@ export class WfsService {
   }
 
   private updateServer(id: string, patch: Partial<WfsServer>): void {
-    this.servers.update(list =>
-      list.map(s => (s.id === id ? { ...s, ...patch } : s))
-    );
+    this.servers.update(list => list.map(s => (s.id === id ? { ...s, ...patch } : s)));
   }
 
-  private updateActiveLayer(featureTypeId: string, patch: Partial<ActiveWfsLayer>): void {
+  private updateActiveLayer(layerId: string, patch: Partial<ActiveWfsLayer>): void {
     this.activeLayers.update(list =>
-      list.map(l => (l.featureTypeId === featureTypeId ? { ...l, ...patch } : l))
+      list.map(l => (l.layerId === layerId ? { ...l, ...patch } : l))
     );
   }
 }
