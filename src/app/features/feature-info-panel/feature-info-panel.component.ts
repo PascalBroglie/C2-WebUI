@@ -63,7 +63,7 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
   styles: [`
     .panel {
       position: absolute;
-      bottom: 40px;
+      bottom: 86px;    /* above timeline bar (24px + 48px + 14px gap) */
       left: 16px;
       width: 320px;
       max-height: 380px;
