@@ -39,19 +39,18 @@ import { FeatureInfoPanelComponent } from '../feature-info-panel/feature-info-pa
     <div class="viewer-container">
       <div #cesiumContainer class="cesium-container"></div>
 
-      <!-- Toolbar (bottom-left) -->
+      <!-- Floating toolbar (top-left) -->
       <div class="toolbar">
-        <button mat-fab extended color="primary" (click)="openTerrainDialog()"
-          matTooltip="Configurer le terrain quantized-mesh">
+        <button class="tool-btn" (click)="openTerrainDialog()"
+          matTooltip="Configurer le terrain" matTooltipPosition="right">
           <mat-icon>terrain</mat-icon>
-          Terrain
         </button>
 
         @if (terrainService.activeTerrainConfig(); as cfg) {
-          <div class="terrain-badge">
+          <div class="terrain-chip">
             <mat-icon>check_circle</mat-icon>
-            {{ cfg.name }}
-            <button mat-icon-button (click)="removeTerrain()" matTooltip="Supprimer le terrain">
+            <span class="chip-label">{{ cfg.name }}</span>
+            <button class="chip-close" (click)="removeTerrain()" matTooltip="Supprimer">
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -61,12 +60,12 @@ import { FeatureInfoPanelComponent } from '../feature-info-panel/feature-info-pa
       <!-- WMS + WFS + WMTS layer manager (top-right) -->
       <app-layer-manager />
 
-      <!-- GetFeatureInfo result panel (bottom-left, above toolbar) -->
+      <!-- GetFeatureInfo result panel (bottom-left) -->
       <app-feature-info-panel />
 
       @if (loading()) {
         <div class="loading-overlay">
-          <mat-spinner diameter="48" />
+          <mat-spinner diameter="40" />
           <span>Connexion au terrain…</span>
         </div>
       }
@@ -76,9 +75,93 @@ import { FeatureInfoPanelComponent } from '../feature-info-panel/feature-info-pa
     :host { display: block; width: 100%; height: 100%; }
     .viewer-container { position: relative; width: 100%; height: 100%; }
     .cesium-container { width: 100%; height: 100%; }
-    .toolbar { position: absolute; top: 16px; left: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
-    .terrain-badge { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.92); backdrop-filter: blur(4px); border-radius: 20px; padding: 4px 8px 4px 12px; font-size: 13px; font-weight: 500; color: #1b5e20; box-shadow: 0 2px 6px rgba(0,0,0,0.2); mat-icon { font-size: 18px; width: 18px; height: 18px; color: #2e7d32; } }
-    .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: white; font-size: 16px; z-index: 20; }
+
+    .toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .tool-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(18, 21, 32, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      color: #a0aec0;
+      transition: color 0.15s, background 0.15s, transform 0.1s;
+      mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      &:hover { color: #82b1ff; background: rgba(91,141,239,0.18); transform: scale(1.05); }
+      &:active { transform: scale(0.97); }
+    }
+
+    .terrain-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(18, 21, 32, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(76,175,114,0.35);
+      border-radius: 22px;
+      padding: 4px 6px 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #4caf72;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      max-width: 200px;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; flex-shrink: 0; }
+    }
+
+    .chip-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      background: transparent;
+      color: #4caf72;
+      padding: 0;
+      flex-shrink: 0;
+      transition: background 0.15s;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; }
+      &:hover { background: rgba(255,255,255,0.1); }
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #e2e6f0;
+      font-size: 14px;
+      z-index: 20;
+    }
   `],
 })
 export class CesiumViewerComponent implements OnInit, OnDestroy {

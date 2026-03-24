@@ -104,12 +104,12 @@ const WMS_PRESETS: { name: string; url: string }[] = [
   `,
   styles: [`
     mat-dialog-content { min-width: 500px; display: flex; flex-direction: column; gap: 8px; }
-    .section-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.6px; margin: 8px 0 4px; }
-    .preset-item { cursor: pointer; border-radius: 6px; &:hover { background: rgba(0,0,0,0.04); } }
-    .url-line { font-size: 11px; color: #999; }
+    .section-label { font-size: 11px; font-weight: 600; color: #5a647a; text-transform: uppercase; letter-spacing: 0.6px; margin: 8px 0 4px; }
+    .preset-item { cursor: pointer; border-radius: 8px; &:hover { background: rgba(255,255,255,0.05); } }
+    .url-line { font-size: 11px; color: #3d4a5c; }
     .divider { margin: 12px 0; }
     .full-width { width: 100%; }
-    .advanced-panel { margin-top: 4px; box-shadow: none !important; border: 1px solid #e0e0e0; border-radius: 8px !important; }
+    .advanced-panel { margin-top: 4px; box-shadow: none !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; }
     .advanced-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; padding-top: 8px; }
     .span-2 { grid-column: span 2; }
   `],

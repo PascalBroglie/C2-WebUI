@@ -67,9 +67,11 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
       left: 16px;
       width: 320px;
       max-height: 380px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+      background: rgba(18, 21, 32, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -80,16 +82,15 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 6px 8px 12px;
-      background: #1565c0;
-      color: white;
+      padding: 10px 8px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
       flex-shrink: 0;
     }
 
-    .header-icon { font-size: 18px; width: 18px; height: 18px; }
-    .header-title { font-size: 13px; font-weight: 600; }
+    .header-icon { font-size: 16px; width: 16px; height: 16px; color: #5b8def; }
+    .header-title { font-size: 13px; font-weight: 600; color: #e2e6f0; }
     .spacer { flex: 1; }
-    .close-btn { color: white; width: 28px; height: 28px; }
+    .close-btn { color: #5a647a; width: 28px; height: 28px; &:hover { color: #e2e6f0; } }
 
     .loading-row {
       display: flex;
@@ -97,22 +98,22 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
       gap: 10px;
       padding: 12px 16px;
       font-size: 13px;
-      color: #666;
+      color: #8892a4;
       flex-shrink: 0;
     }
 
     .result-block {
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid rgba(255,255,255,0.06);
       flex-shrink: 0;
     }
 
     .result-title {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      color: #1565c0;
-      padding: 6px 12px 2px;
+      color: #5b8def;
+      padding: 6px 14px 2px;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
     }
 
     .result-content {
@@ -122,22 +123,23 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
 
     .json-pre, .text-pre {
       margin: 0;
-      padding: 6px 12px 10px;
+      padding: 6px 14px 10px;
       font-size: 11px;
       font-family: 'Courier New', monospace;
       white-space: pre-wrap;
       word-break: break-all;
-      color: #333;
-      background: #fafafa;
+      color: #a8b4c8;
+      background: rgba(0,0,0,0.2);
     }
 
     .html-content {
-      padding: 6px 12px 10px;
+      padding: 6px 14px 10px;
       font-size: 12px;
+      color: #c8d0de;
       overflow-x: auto;
       ::ng-deep table { border-collapse: collapse; width: 100%; }
-      ::ng-deep td, ::ng-deep th { border: 1px solid #e0e0e0; padding: 3px 6px; font-size: 11px; }
-      ::ng-deep th { background: #f5f5f5; font-weight: 600; }
+      ::ng-deep td, ::ng-deep th { border: 1px solid rgba(255,255,255,0.1); padding: 3px 6px; font-size: 11px; }
+      ::ng-deep th { background: rgba(255,255,255,0.05); font-weight: 600; color: #e2e6f0; }
     }
 
     .no-result {
@@ -145,7 +147,7 @@ import { FeatureInfoResult, FeatureInfoService } from '../../core/services/featu
       align-items: center;
       gap: 8px;
       padding: 16px;
-      color: #999;
+      color: #3d4a5c;
       font-size: 13px;
       mat-icon { font-size: 18px; width: 18px; height: 18px; }
     }

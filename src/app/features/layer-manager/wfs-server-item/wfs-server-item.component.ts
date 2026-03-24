@@ -100,10 +100,11 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
   styles: [`
     :host {
       display: block;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      background: rgba(255,255,255,0.03);
     }
 
     .server-header {
@@ -112,9 +113,8 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       gap: 8px;
       padding: 8px 8px 8px 12px;
       cursor: pointer;
-      background: #fafafa;
       transition: background 0.15s;
-      &:hover { background: #f0f0f0; }
+      &:hover { background: rgba(255,255,255,0.05); }
     }
 
     .status-spinner { flex-shrink: 0; }
@@ -124,9 +124,9 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       width: 18px;
       height: 18px;
       flex-shrink: 0;
-      color: #666;
-      &.ready { color: #1565c0; }
-      &.error { color: #c62828; }
+      color: #5a647a;
+      &.ready { color: #5b8def; }
+      &.error { color: #ef5350; }
     }
 
     .server-info {
@@ -142,12 +142,12 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: #212121;
+      color: #c8d0de;
     }
 
     .server-meta {
       font-size: 10px;
-      color: #999;
+      color: #3d4a5c;
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
@@ -155,8 +155,8 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
     .ft-badge {
       font-size: 10px;
       font-weight: 700;
-      background: #e3f2fd;
-      color: #1565c0;
+      background: rgba(91,141,239,0.15);
+      color: #82b1ff;
       border-radius: 8px;
       padding: 1px 6px;
       flex-shrink: 0;
@@ -166,7 +166,7 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: #666;
+      color: #3d4a5c;
       flex-shrink: 0;
     }
 
@@ -174,8 +174,8 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       flex-shrink: 0;
       width: 28px;
       height: 28px;
-      color: #999;
-      &:hover { color: #c62828; }
+      color: #3d4a5c;
+      &:hover { color: #ef5350; }
     }
 
     .error-message {
@@ -183,8 +183,9 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       align-items: center;
       gap: 6px;
       padding: 6px 12px;
-      background: #fff3e0;
-      color: #e65100;
+      background: rgba(239,83,80,0.1);
+      border-top: 1px solid rgba(239,83,80,0.2);
+      color: #ef9a9a;
       font-size: 12px;
       mat-icon { font-size: 14px; width: 14px; height: 14px; }
     }
@@ -193,11 +194,12 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       padding: 4px 0;
       max-height: 420px;
       overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.06);
     }
 
     .empty {
       font-size: 12px;
-      color: #999;
+      color: #3d4a5c;
       text-align: center;
       padding: 12px;
     }
@@ -207,10 +209,10 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       align-items: center;
       gap: 6px;
       padding: 4px 8px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    .search-icon { font-size: 16px; width: 16px; height: 16px; color: #999; }
+    .search-icon { font-size: 16px; width: 16px; height: 16px; color: #3d4a5c; }
 
     .search-input {
       flex: 1;
@@ -218,8 +220,8 @@ import { WfsFeatureItemComponent } from '../wfs-feature-item/wfs-feature-item.co
       outline: none;
       font-size: 12px;
       background: transparent;
-      color: #333;
-      &::placeholder { color: #bbb; }
+      color: #c8d0de;
+      &::placeholder { color: #3d4a5c; }
     }
   `],
 })

@@ -79,12 +79,12 @@ import { DEFAULT_TERRAIN_PROVIDERS, TerrainProviderConfig } from '../../core/mod
   `,
   styles: [`
     mat-dialog-content { min-width: 480px; display: flex; flex-direction: column; gap: 8px; }
-    .section-label { font-size: 12px; font-weight: 500; color: #666; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .preset-item { cursor: pointer; border-radius: 4px; &:hover { background: rgba(0,0,0,0.04); } }
+    .section-label { font-size: 11px; font-weight: 600; color: #5a647a; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .preset-item { cursor: pointer; border-radius: 8px; &:hover { background: rgba(255,255,255,0.05); } }
     .divider { margin: 16px 0; }
     .full-width { width: 100%; }
     .options-row { display: flex; gap: 24px; }
-    .error-msg { color: #f44336; font-size: 12px; }
+    .error-msg { color: #ef9a9a; font-size: 12px; }
   `],
 })
 export class TerrainDialogComponent {

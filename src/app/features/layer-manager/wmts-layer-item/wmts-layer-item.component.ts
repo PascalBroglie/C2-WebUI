@@ -75,8 +75,8 @@ import { WmtsService } from '../../../core/services/wmts.service';
       min-height: 36px;
       gap: 4px;
       padding: 0 4px;
-      border-radius: 4px;
-      &:hover { background: rgba(0,0,0,0.04); }
+      border-radius: 6px;
+      &:hover { background: rgba(255,255,255,0.04); }
     }
 
     .layer-icon {
@@ -84,19 +84,21 @@ import { WmtsService } from '../../../core/services/wmts.service';
       width: 16px;
       height: 16px;
       flex-shrink: 0;
-      color: #1565c0;
+      color: #5b8def;
     }
 
     .layer-label {
       flex: 1;
       font-size: 13px;
       min-width: 0;
+      color: #c8d0de;
       ::ng-deep .mdc-label {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 175px;
         display: block;
+        color: #c8d0de;
       }
     }
 
@@ -104,9 +106,9 @@ import { WmtsService } from '../../../core/services/wmts.service';
       width: 24px;
       height: 24px;
       flex-shrink: 0;
-      color: #999;
-      &:hover { color: #1565c0; }
-      &.visible { color: #1565c0; }
+      color: #3d4a5c;
+      &:hover { color: #82b1ff; }
+      &.visible { color: #5b8def; }
     }
 
     .controls-row {
@@ -120,7 +122,7 @@ import { WmtsService } from '../../../core/services/wmts.service';
       font-size: 14px;
       width: 14px;
       height: 14px;
-      color: #999;
+      color: #3d4a5c;
       flex-shrink: 0;
     }
 

@@ -82,10 +82,11 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
   styles: [`
     :host {
       display: block;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      background: rgba(255,255,255,0.03);
     }
 
     .server-header {
@@ -94,10 +95,9 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       gap: 8px;
       padding: 8px 8px 8px 12px;
       cursor: pointer;
-      background: #fafafa;
       transition: background 0.15s;
 
-      &:hover { background: #f0f0f0; }
+      &:hover { background: rgba(255,255,255,0.05); }
     }
 
     .status-spinner { flex-shrink: 0; }
@@ -107,9 +107,10 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       width: 18px;
       height: 18px;
       flex-shrink: 0;
+      color: #5a647a;
 
-      &.ready { color: #2e7d32; }
-      &.error { color: #c62828; }
+      &.ready { color: #4caf72; }
+      &.error { color: #ef5350; }
     }
 
     .server-info {
@@ -125,12 +126,12 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: #212121;
+      color: #c8d0de;
     }
 
     .server-version {
       font-size: 10px;
-      color: #999;
+      color: #3d4a5c;
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
@@ -139,7 +140,7 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: #666;
+      color: #3d4a5c;
       flex-shrink: 0;
     }
 
@@ -147,9 +148,9 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       flex-shrink: 0;
       width: 28px;
       height: 28px;
-      color: #999;
+      color: #3d4a5c;
 
-      &:hover { color: #c62828; }
+      &:hover { color: #ef5350; }
     }
 
     .error-message {
@@ -157,8 +158,9 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       align-items: center;
       gap: 6px;
       padding: 6px 12px;
-      background: #fff3e0;
-      color: #e65100;
+      background: rgba(239,83,80,0.1);
+      border-top: 1px solid rgba(239,83,80,0.2);
+      color: #ef9a9a;
       font-size: 12px;
 
       mat-icon { font-size: 14px; width: 14px; height: 14px; }
@@ -168,11 +170,12 @@ import { WmsLayerItemComponent } from '../wms-layer-item/wms-layer-item.componen
       padding: 4px 0;
       max-height: 400px;
       overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.06);
     }
 
     .no-layers {
       font-size: 12px;
-      color: #999;
+      color: #3d4a5c;
       text-align: center;
       padding: 12px;
     }

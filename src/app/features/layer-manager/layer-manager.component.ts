@@ -37,24 +37,25 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
     WmtsServerItemComponent,
   ],
   template: `
-    <button mat-fab extended [color]="panelOpen() ? 'accent' : 'primary'" class="toggle-fab"
-      (click)="panelOpen.set(!panelOpen())" matTooltip="Gestionnaire de couches (WMS / WFS / WMTS)">
-      <mat-icon>layers</mat-icon>
-      Couches
-      @if (totalActiveLayers() > 0) {
-        <span class="active-badge">{{ totalActiveLayers() }}</span>
+    <!-- Toggle button -->
+    <button class="toggle-btn" (click)="panelOpen.set(!panelOpen())"
+      matTooltip="Gestionnaire de couches (WMS / WFS / WMTS)" matTooltipPosition="left">
+      <mat-icon>{{ panelOpen() ? 'close' : 'layers' }}</mat-icon>
+      @if (totalActiveLayers() > 0 && !panelOpen()) {
+        <span class="active-dot">{{ totalActiveLayers() }}</span>
       }
     </button>
 
     @if (panelOpen()) {
       <div class="panel">
+        <!-- Panel header -->
         <div class="panel-header">
-          <mat-icon>layers</mat-icon>
-          <h3>Gestionnaire de couches</h3>
+          <mat-icon class="header-icon">layers</mat-icon>
+          <h3>Couches</h3>
           <span class="spacer"></span>
-          <button mat-icon-button (click)="panelOpen.set(false)" matTooltip="Fermer">
-            <mat-icon>close</mat-icon>
-          </button>
+          @if (totalActiveLayers() > 0) {
+            <span class="active-count">{{ totalActiveLayers() }} actif{{ totalActiveLayers() > 1 ? 's' : '' }}</span>
+          }
         </div>
 
         <mat-tab-group animationDuration="150ms" class="tab-group">
@@ -69,9 +70,9 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
             </ng-template>
             <div class="tab-content">
               <div class="tab-toolbar">
-                <span class="tab-hint">Services de tuiles raster</span>
+                <span class="tab-hint">Tuiles raster</span>
                 <button mat-icon-button (click)="openAddDialog('WMS')" matTooltip="Ajouter un serveur WMS">
-                  <mat-icon>add_circle_outline</mat-icon>
+                  <mat-icon>add</mat-icon>
                 </button>
               </div>
               <div class="server-list">
@@ -79,7 +80,7 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
                   <div class="empty-state">
                     <mat-icon>image_not_supported</mat-icon>
                     <p>Aucun serveur WMS</p>
-                    <button mat-stroked-button color="primary" (click)="openAddDialog('WMS')">
+                    <button mat-stroked-button (click)="openAddDialog('WMS')">
                       <mat-icon>add</mat-icon> Ajouter
                     </button>
                   </div>
@@ -101,9 +102,9 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
             </ng-template>
             <div class="tab-content">
               <div class="tab-toolbar">
-                <span class="tab-hint">Services d'entités vecteur</span>
+                <span class="tab-hint">Entités vecteur</span>
                 <button mat-icon-button (click)="openAddDialog('WFS')" matTooltip="Ajouter un serveur WFS">
-                  <mat-icon>add_circle_outline</mat-icon>
+                  <mat-icon>add</mat-icon>
                 </button>
               </div>
               <div class="server-list">
@@ -111,7 +112,7 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
                   <div class="empty-state">
                     <mat-icon>layers_clear</mat-icon>
                     <p>Aucun serveur WFS</p>
-                    <button mat-stroked-button color="primary" (click)="openAddDialog('WFS')">
+                    <button mat-stroked-button (click)="openAddDialog('WFS')">
                       <mat-icon>add</mat-icon> Ajouter
                     </button>
                   </div>
@@ -133,9 +134,9 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
             </ng-template>
             <div class="tab-content">
               <div class="tab-toolbar">
-                <span class="tab-hint">Services de tuiles (OGC WMTS)</span>
+                <span class="tab-hint">Tuiles OGC</span>
                 <button mat-icon-button (click)="openAddDialog('WMTS')" matTooltip="Ajouter un serveur WMTS">
-                  <mat-icon>add_circle_outline</mat-icon>
+                  <mat-icon>add</mat-icon>
                 </button>
               </div>
               <div class="server-list">
@@ -143,7 +144,7 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
                   <div class="empty-state">
                     <mat-icon>grid_off</mat-icon>
                     <p>Aucun serveur WMTS</p>
-                    <button mat-stroked-button color="primary" (click)="openAddDialog('WMTS')">
+                    <button mat-stroked-button (click)="openAddDialog('WMTS')">
                       <mat-icon>add</mat-icon> Ajouter
                     </button>
                   </div>
@@ -158,29 +159,162 @@ import { AddWmtsServerDialogComponent } from './add-wmts-server-dialog/add-wmts-
         </mat-tab-group>
 
         @if (totalActiveLayers() > 0) {
-          <mat-divider />
           <div class="panel-footer">
-            <mat-icon>check_circle</mat-icon>
-            <span>{{ wmsService.activeLayers().length }} WMS • {{ wfsService.activeLayers().length }} WFS • {{ wmtsService.activeLayers().length }} WMTS actif(s)</span>
+            <mat-icon>layers</mat-icon>
+            <span>{{ wmsService.activeLayers().length }} WMS · {{ wfsService.activeLayers().length }} WFS · {{ wmtsService.activeLayers().length }} WMTS</span>
           </div>
         }
       </div>
     }
   `,
   styles: [`
-    :host { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10; }
-    .active-badge { background: #fff; color: #1565c0; border-radius: 10px; font-size: 11px; font-weight: 700; padding: 1px 6px; margin-left: 4px; }
-    .panel { width: 340px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 120px); }
-    .panel-header { display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 16px; background: #1565c0; color: white; flex-shrink: 0; mat-icon { color: white; } h3 { margin: 0; font-size: 14px; font-weight: 600; } .spacer { flex: 1; } button { color: white; } }
-    .tab-group { flex: 1; min-height: 0; display: flex; flex-direction: column; ::ng-deep .mat-mdc-tab-body-wrapper { flex: 1; overflow: hidden; } }
+    :host {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .toggle-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(18, 21, 32, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      color: #a0aec0;
+      transition: color 0.15s, background 0.15s, transform 0.1s;
+      mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      &:hover { color: #82b1ff; background: rgba(91,141,239,0.18); transform: scale(1.05); }
+      &:active { transform: scale(0.97); }
+    }
+
+    .active-dot {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      min-width: 16px;
+      height: 16px;
+      background: #5b8def;
+      color: white;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      border: 1.5px solid rgba(18,21,32,0.9);
+    }
+
+    .panel {
+      width: 340px;
+      background: rgba(18, 21, 32, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: calc(100vh - 120px);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 12px 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+
+    .header-icon { font-size: 18px; width: 18px; height: 18px; color: #5b8def; }
+    h3 { margin: 0; font-size: 14px; font-weight: 600; color: #e2e6f0; }
+    .spacer { flex: 1; }
+
+    .active-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #4caf72;
+      background: rgba(76,175,114,0.15);
+      border: 1px solid rgba(76,175,114,0.3);
+      border-radius: 10px;
+      padding: 2px 8px;
+    }
+
+    .tab-group {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      ::ng-deep .mat-mdc-tab-body-wrapper { flex: 1; overflow: hidden; }
+      ::ng-deep .mat-mdc-tab-header { border-bottom: 1px solid rgba(255,255,255,0.07); }
+    }
+
     .tab-icon { font-size: 16px; width: 16px; height: 16px; margin-right: 4px; }
-    .tab-badge { background: #1565c0; color: white; border-radius: 8px; font-size: 10px; font-weight: 700; padding: 1px 5px; margin-left: 4px; }
+
+    .tab-badge {
+      background: #5b8def;
+      color: white;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      margin-left: 4px;
+    }
+
     .tab-content { display: flex; flex-direction: column; height: 100%; }
-    .tab-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 6px 12px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
-    .tab-hint { font-size: 11px; color: #999; font-style: italic; }
+
+    .tab-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+
+    .tab-hint { font-size: 11px; color: #5a647a; font-style: italic; }
+
     .server-list { flex: 1; overflow-y: auto; padding: 8px; }
-    .empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 16px; color: #bbb; text-align: center; mat-icon { font-size: 40px; width: 40px; height: 40px; } p { margin: 0; font-size: 13px; color: #999; } }
-    .panel-footer { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: 500; flex-shrink: 0; mat-icon { font-size: 16px; width: 16px; height: 16px; } }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 32px 16px;
+      color: #3d4a5c;
+      text-align: center;
+      mat-icon { font-size: 36px; width: 36px; height: 36px; }
+      p { margin: 0; font-size: 13px; color: #5a647a; }
+    }
+
+    .panel-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      background: rgba(76,175,114,0.08);
+      color: #4caf72;
+      font-size: 11px;
+      font-weight: 500;
+      flex-shrink: 0;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    }
   `],
 })
 export class LayerManagerComponent {

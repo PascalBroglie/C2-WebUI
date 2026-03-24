@@ -109,8 +109,8 @@ import { WfsService } from '../../../core/services/wfs.service';
       min-height: 36px;
       gap: 4px;
       padding: 0 4px;
-      border-radius: 4px;
-      &:hover { background: rgba(0,0,0,0.04); }
+      border-radius: 6px;
+      &:hover { background: rgba(255,255,255,0.04); }
     }
 
     .spinner { flex-shrink: 0; }
@@ -127,20 +127,22 @@ import { WfsService } from '../../../core/services/wfs.service';
       flex: 1;
       font-size: 13px;
       min-width: 0;
+      color: #c8d0de;
       ::ng-deep .mdc-label {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 170px;
         display: block;
+        color: #c8d0de;
       }
     }
 
     .count-badge {
       font-size: 10px;
       font-weight: 600;
-      background: #e3f2fd;
-      color: #1565c0;
+      background: rgba(91,141,239,0.15);
+      color: #82b1ff;
       border-radius: 8px;
       padding: 1px 6px;
       white-space: nowrap;
@@ -151,8 +153,8 @@ import { WfsService } from '../../../core/services/wfs.service';
       width: 24px;
       height: 24px;
       flex-shrink: 0;
-      color: #999;
-      &:hover { color: #1565c0; }
+      color: #3d4a5c;
+      &:hover { color: #82b1ff; }
     }
 
     .error-row {
@@ -160,7 +162,7 @@ import { WfsService } from '../../../core/services/wfs.service';
       align-items: center;
       gap: 6px;
       font-size: 11px;
-      color: #c62828;
+      color: #ef9a9a;
       padding: 4px 8px 4px 36px;
       mat-icon { font-size: 14px; width: 14px; height: 14px; }
     }
@@ -176,7 +178,7 @@ import { WfsService } from '../../../core/services/wfs.service';
       font-size: 14px;
       width: 14px;
       height: 14px;
-      color: #999;
+      color: #3d4a5c;
       flex-shrink: 0;
     }
 
@@ -202,7 +204,7 @@ import { WfsService } from '../../../core/services/wfs.service';
       transition: transform 0.1s;
 
       &:hover { transform: scale(1.2); }
-      &.selected { border-color: #333; transform: scale(1.15); }
+      &.selected { border-color: rgba(255,255,255,0.7); transform: scale(1.15); }
     }
   `],
 })

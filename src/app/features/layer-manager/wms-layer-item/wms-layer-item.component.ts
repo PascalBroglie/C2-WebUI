@@ -116,10 +116,10 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
       min-height: 36px;
       gap: 2px;
 
-      &:hover { background: rgba(0, 0, 0, 0.04); border-radius: 4px; }
+      &:hover { background: rgba(255,255,255,0.04); border-radius: 6px; }
     }
 
-    .expand-btn { width: 28px; height: 28px; flex-shrink: 0; }
+    .expand-btn { width: 28px; height: 28px; flex-shrink: 0; color: #5a647a; }
     .expand-placeholder { width: 28px; flex-shrink: 0; }
 
     .layer-icon {
@@ -127,13 +127,14 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
       width: 16px;
       height: 16px;
       flex-shrink: 0;
-      color: #666;
+      color: #3d4a5c;
     }
 
     .layer-label {
       font-size: 13px;
       flex: 1;
       overflow: hidden;
+      color: #c8d0de;
 
       ::ng-deep .mdc-label {
         white-space: nowrap;
@@ -141,13 +142,14 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
         text-overflow: ellipsis;
         max-width: 200px;
         display: block;
+        color: #c8d0de;
       }
     }
 
     .group-label {
       font-size: 12px;
       font-weight: 600;
-      color: #444;
+      color: #8892a4;
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -165,7 +167,7 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
       font-size: 14px;
       width: 14px;
       height: 14px;
-      color: #999;
+      color: #3d4a5c;
     }
 
     .opacity-slider {
@@ -177,9 +179,9 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
       width: 24px;
       height: 24px;
       flex-shrink: 0;
-      color: #999;
-      &:hover { color: #1565c0; }
-      &.active { color: #1565c0; }
+      color: #3d4a5c;
+      &:hover { color: #82b1ff; }
+      &.active { color: #5b8def; }
     }
 
     .legend-panel {
@@ -189,9 +191,9 @@ import { FeatureInfoService } from '../../../core/services/feature-info.service'
     .legend-img {
       max-width: 240px;
       max-height: 200px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 4px;
-      background: white;
+      background: rgba(255,255,255,0.05);
       display: block;
     }
   `],
